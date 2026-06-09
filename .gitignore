@@ -1,0 +1,10 @@
+node_modules/
+dist/
+release/
+frontend/dist/
+backend/node_modules/
+backend/data/
+backend/uploads/
+*.log
+.env
+.env.local

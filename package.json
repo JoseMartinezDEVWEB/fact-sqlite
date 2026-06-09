@@ -1,0 +1,149 @@
+{
+  "name": "factura-sqlite",
+  "productName": "Factura SQLite",
+  "version": "1.0.0",
+  "description": "Aplicación de escritorio para gestión empresarial - versión SQLite",
+  "main": "electron/main.js",
+  "author": "Tu Empresa",
+  "license": "MIT",
+  "homepage": "./",
+  "scripts": {
+    "electron:dev": "npm run build:frontend && cross-env NODE_ENV=development electron .",
+    "electron:build": "npm --prefix frontend run build && npm --prefix backend install && cross-env NODE_ENV=production electron-builder --win --x64",
+    "electron:pack": "npm --prefix frontend run build && electron-builder --dir",
+    "electron:serve": "cross-env NODE_ENV=production electron .",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:all": "npm run build:frontend && npm run electron:build",
+    "clean": "rimraf release dist frontend/dist",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:dev": "npm --prefix backend install && npm run electron:dev",
+    "dev": "npm run build:frontend && npm run electron:dev",
+    "setup": "npm install && npm --prefix frontend install && npm --prefix backend install",
+    "start": "npm run dev",
+    "install:backend": "npm --prefix backend install",
+    "build:electron": "cross-env NODE_ENV=production electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "cross-env": "^7.0.3",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3",
+    "electron-rebuild": "^3.2.9",
+    "electron-updater": "^6.1.7",
+    "portfinder": "^1.0.3",
+    "rimraf": "^5.0.5",
+    "tree-kill": "^1.2.2",
+    "wait-on": "^8.0.3"
+  },
+  "dependencies": {},
+  "build": {
+    "appId": "com.tuempresa.factura-sqlite",
+    "productName": "Factura SQLite",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "backend/**/*",
+      "frontend/dist/**/*",
+      "node_modules/**/*",
+      "package.json",
+      "!**/*.map",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}",
+      "!**/logs/**/*",
+      "!**/temp/**/*",
+      "!**/.vscode/**/*"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "backend/**/*",
+      "node_modules/better-sqlite3/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "app-backend",
+        "filter": [
+          "**/*",
+          "!node_modules",
+          "!logs",
+          "!temp"
+        ]
+      },
+      {
+        "from": "backend/node_modules",
+        "to": "app-backend/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "electron/assets/icons/ICONOnew1.ico",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "requestedExecutionLevel": "asInvoker",
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Factura SQLite",
+      "include": "build/installer.nsh",
+      "installerIcon": "electron/assets/icons/ICONOnew1.ico",
+      "uninstallerIcon": "electron/assets/icons/ICONOnew1.ico",
+      "installerHeaderIcon": "electron/assets/icons/ICONOnew1.ico",
+      "deleteAppDataOnUninstall": false,
+      "installMode": "currentUser",
+      "runAfterFinish": true,
+      "menuCategory": "Factura SQLite",
+      "displayLanguageSelector": false,
+      "language": "1034"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-Portable.${ext}",
+      "requestExecutionLevel": "asInvoker"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "tu-usuario-github",
+      "repo": "factura-sqlite",
+      "private": true
+    },
+    "compression": "maximum",
+    "removePackageScripts": true,
+    "removePackageKeywords": true,
+    "npmRebuild": true,
+    "buildDependenciesFromSource": false,
+    "electronVersion": "28.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tu-usuario-github/factura-sqlite.git"
+  },
+  "keywords": ["electron", "react", "nodejs", "sqlite", "desktop", "business"]
+}

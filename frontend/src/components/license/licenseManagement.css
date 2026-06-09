@@ -1,0 +1,73 @@
+/* Animaciones para los modales */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Estilos adicionales para mejorar la apariencia */
+.table-container {
+  transition: all 0.3s ease;
+}
+
+/* Efectos hover para las filas de la tabla */
+.hover\:bg-gray-50:hover {
+  transition: background-color 0.2s ease;
+}
+
+/* Efectos para los botones */
+button {
+  transition: all 0.2s ease;
+}
+
+/* Efectos para los inputs y selects */
+input:focus, select:focus, textarea:focus {
+  transition: all 0.2s ease;
+}
+
+/* Estilos para los badges de estado */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* Animación de carga */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Animación para mensajes de alerta */
+@keyframes slideIn {
+  from {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.alert-message {
+  animation: slideIn 0.3s ease-out forwards;
+}

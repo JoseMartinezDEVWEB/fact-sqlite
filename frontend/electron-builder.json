@@ -1,0 +1,40 @@
+{
+  "appId": "com.facturapro.enterprise",
+  "productName": "FacturaPro Enterprise",
+  "copyright": "Copyright © 2025 FacturaPro",
+  "directories": {
+    "output": "dist/installer"
+  },
+  "win": {
+    "target": "nsis",
+    "icon": "public/favicon.ico",
+    "publisherName": "FacturaPro",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "JoseMartinezDEVWEB",
+        "repo": "facturaPro_enterprise"
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "installerIcon": "public/favicon.ico",
+    "uninstallerIcon": "public/favicon.ico",
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "FacturaPro Enterprise"
+  },
+  "files": [
+    "dist/**/*",
+    "node_modules/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "public",
+      "to": "public",
+      "filter": ["**/*"]
+    }
+  ]
+}

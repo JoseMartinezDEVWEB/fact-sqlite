@@ -1,0 +1,33 @@
+// routes/clienteRoutes.js
+import express from 'express';
+import {
+  getClientes, getClientesStats, searchClientes,
+  createCliente, getClienteById, updateCliente, deleteCliente,
+  getClientesDeuda, saldarDeuda, abonarDeuda
+} from '../controllers/clienteController.js';
+import { authMiddleware } from '../middleware/authmiddleware.js';
+
+const router = express.Router();
+
+// Proteger todas las rutas con autenticación
+router.use(authMiddleware);
+
+// Listar todos los clientes
+router.get('/', getClientes);
+
+// Rutas para estadísticas y búsqueda
+router.get('/stats', getClientesStats);
+router.get('/search', searchClientes);
+
+// Nuevas rutas para gestión de deudas
+router.get('/deudas', getClientesDeuda);
+router.post('/saldar-deuda', saldarDeuda);
+router.post('/abonar-deuda', abonarDeuda);
+
+// Rutas CRUD
+router.post('/', createCliente);
+router.get('/:id', getClienteById);
+router.put('/:id', updateCliente);
+router.delete('/:id', deleteCliente);
+
+export default router;

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Factura J-4PRO - Cargando...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #4b5eb9 0%, #2675eb 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .splash-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            max-width: 450px;
+            width: 90%;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: #2675eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .app-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .app-subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .loading-text {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px;
+            animation: progress 3s ease-in-out infinite;
+        }
+
+        @keyframes progress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e0e0e0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-text {
+            font-size: 14px;
+            color: #777;
+            margin-top: 15px;
+            min-height: 20px;
+            transition: color 0.3s ease;
+        }
+
+        .status-text.error {
+            color: #d32f2f;
+            font-weight: 600;
+        }
+
+        .status-text.success {
+            color: #388e3c;
+            font-weight: 600;
+        }
+
+        .dots {
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        .error-container {
+            display: none;
+            background: #ffebee;
+            border: 1px solid #ffcdd2;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 25px;
+            color: #d32f2f;
+            text-align: left;
+        }
+
+        .error-container.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-icon {
+            font-size: 24px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .error-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #c62828;
+        }
+
+        .error-message {
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            color: #d32f2f;
+        }
+
+        .error-details {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #666;
+            border-left: 3px solid #ff9800;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .retry-button {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        .retry-button:hover {
+            background: linear-gradient(135deg, #45a049, #388e3c);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+
+        .retry-button:active {
+            transform: translateY(0);
+        }
+
+        .close-button {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+        }
+
+        .close-button:hover {
+            background: linear-gradient(135deg, #d32f2f, #c62828);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+        }
+
+        .close-button:active {
+            transform: translateY(0);
+        }
+
+        .loading-container {
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .success-container {
+            display: none;
+            text-align: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .success-container.show {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .success-icon {
+            font-size: 48px;
+            color: #4caf50;
+            margin-bottom: 20px;
+        }
+
+        .success-message {
+            font-size: 18px;
+            color: #4caf50;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="splash-container">
+        <!-- Logo de la app -->
+        <div class="logo">
+            <img src="assets/icons/ICONOnew1.ico" alt="Logo" style="width:48px;height:48px;border-radius:8px;">
+        </div>
+        <h1 class="app-title">Factura J-4PRO</h1>
+        <p class="app-subtitle">Sistema de Gestión de Facturas</p>
+        
+        <!-- Contenedor de carga -->
+        <div class="loading-container" id="loadingContainer">
+            <div class="loading-text">Iniciando aplicación</div>
+            
+            <div class="progress-container">
+                <div class="progress-bar"></div>
+            </div>
+            
+            <div class="spinner"></div>
+            
+            <div class="status-text" id="status">
+                Preparando servicios<span class="dots"></span>
+            </div>
+        </div>
+
+        <!-- Contenedor de éxito -->
+        <div class="success-container" id="successContainer">
+            <div class="success-icon">✅</div>
+            <div class="success-message" id="successMessage">Aplicación iniciada correctamente</div>
+        </div>
+
+        <!-- Contenedor de error -->
+        <div class="error-container" id="errorContainer">
+            <div class="error-icon">⚠️</div>
+            <div class="error-title">Error de Conexión</div>
+            <div class="error-message" id="errorMessage">
+                No se pudo conectar con el servidor backend o la base de datos.
+            </div>
+            <div class="error-details" id="errorDetails">
+                Detalles del error aparecerán aquí...
+            </div>
+            <div class="button-container">
+                <button class="retry-button" id="retryButton" onclick="retryStartup()">
+                    🔄 Reintentar Conexión
+                </button>
+                <button class="close-button" id="closeButton" onclick="closeApplication()">
+                    ❌ Cerrar Aplicación
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let currentStatus = 'Preparando servicios...';
+        let isError = false;
+        let isSuccess = false;
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
+        
+        // Elementos del DOM
+        const statusElement = document.getElementById('status');
+        const loadingContainer = document.getElementById('loadingContainer');
+        const successContainer = document.getElementById('successContainer');
+        const errorContainer = document.getElementById('errorContainer');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorDetails = document.getElementById('errorDetails');
+        const retryButton = document.getElementById('retryButton');
+        const closeButton = document.getElementById('closeButton');
+        const successMessage = document.getElementById('successMessage');
+        
+        // Mensajes de estado predefinidos
+        const statusMessages = [
+            'Preparando servicios...',
+            'Verificando MongoDB...',
+            'Conectando base de datos...',
+            'Iniciando servidor backend...',
+            'Cargando configuración...',
+            'Preparando interfaz...',
+            'Casi listo...'
+        ];
+
+        let currentMessageIndex = 0;
+        let statusUpdateInterval;
+
+        // Función para actualizar el estado
+        function updateStatus(message, type = 'info') {
+            currentStatus = message;
+            
+            // Remover clases de estado anteriores
+            statusElement.classList.remove('error', 'success');
+            
+            // Aplicar clase según el tipo
+            if (type === 'error') {
+                statusElement.classList.add('error');
+                isError = true;
+            } else if (type === 'success') {
+                statusElement.classList.add('success');
+            }
+            
+            // Actualizar texto
+            statusElement.textContent = message;
+        }
+
+        // Función para mostrar error
+        function showError(message, details = '') {
+            isError = true;
+            isSuccess = false;
+            
+            // Ocultar contenedores de carga y éxito
+            loadingContainer.classList.add('hidden');
+            successContainer.classList.remove('show');
+            
+            // Mostrar contenedor de error
+            errorContainer.classList.add('show');
+            
+            // Actualizar mensajes
+            errorMessage.textContent = message;
+            if (details) {
+                errorDetails.textContent = details;
+                errorDetails.style.display = 'block';
+            } else {
+                errorDetails.style.display = 'none';
+            }
+            
+            // Actualizar estado
+            updateStatus('Error en el inicio', 'error');
+            
+            // Actualizar texto del botón de reintento
+            if (retryCount >= MAX_RETRIES) {
+                retryButton.textContent = '🔄 Reintentar (Máximo alcanzado)';
+                retryButton.disabled = true;
+                retryButton.style.opacity = '0.6';
+            } else {
+                retryButton.textContent = `🔄 Reintentar (${retryCount + 1}/${MAX_RETRIES})`;
+            }
+        }
+
+        // Función para mostrar éxito
+        function showSuccess(message) {
+            isSuccess = true;
+            isError = false;
+            
+            // Ocultar contenedores de carga y error
+            loadingContainer.classList.add('hidden');
+            errorContainer.classList.remove('show');
+            
+            // Mostrar contenedor de éxito
+            successContainer.classList.add('show');
+            successMessage.textContent = message;
+            
+            // Actualizar estado
+            updateStatus(message, 'success');
+            
+            // Cerrar splash después de mostrar el mensaje de éxito
+            setTimeout(() => {
+                closeSplash();
+            }, 1500);
+        }
+
+        // Función para reintentar
+        function retryStartup() {
+            if (retryCount >= MAX_RETRIES) {
+                return; // No permitir más reintentos
+            }
+            
+            retryCount++;
+            console.log(`🔄 Reintentando inicio (${retryCount}/${MAX_RETRIES})...`);
+            
+            // Ocultar error
+            errorContainer.classList.remove('show');
+            
+            // Mostrar elementos de carga
+            loadingContainer.classList.remove('hidden');
+            
+            // Reiniciar estado
+            isError = false;
+            isSuccess = false;
+            currentMessageIndex = 0;
+            
+            // Reiniciar mensajes automáticos
+            startStatusUpdates();
+            
+            // Notificar al proceso principal que se debe reintentar
+            if (window.electronAPI) {
+                window.electronAPI.retryStartup().then(result => {
+                    if (result.success) {
+                        console.log('✅ Reintento exitoso');
+                    } else {
+                        console.error('❌ Reintento fallido:', result.error);
+                        showError('Error en el reintento', result.error);
+                    }
+                }).catch(error => {
+                    console.error('❌ Error en reintento:', error);
+                    showError('Error en el reintento', error.message);
+                });
+            }
+        }
+
+        // Función para cerrar la aplicación
+        function closeApplication() {
+            console.log('❌ Cerrando aplicación desde splash...');
+            
+            // Notificar al proceso principal que se debe cerrar
+            if (window.electronAPI) {
+                window.electronAPI.quit().then(() => {
+                    console.log('✅ Aplicación cerrada');
+                }).catch(error => {
+                    console.error('❌ Error cerrando aplicación:', error);
+                    // Fallback: cerrar la ventana directamente
+                    window.close();
+                });
+            } else {
+                // Fallback: cerrar la ventana directamente
+                window.close();
+            }
+        }
+
+        // Función para iniciar actualizaciones automáticas de estado
+        function startStatusUpdates() {
+            statusUpdateInterval = setInterval(() => {
+                if (!isError && !isSuccess && currentMessageIndex < statusMessages.length) {
+                    updateStatus(statusMessages[currentMessageIndex]);
+                    currentMessageIndex++;
+                } else if (currentMessageIndex >= statusMessages.length) {
+                    clearInterval(statusUpdateInterval);
+                }
+            }, 800);
+        }
+
+        // Función para detener actualizaciones automáticas
+        function stopStatusUpdates() {
+            if (statusUpdateInterval) {
+                clearInterval(statusUpdateInterval);
+            }
+        }
+
+        // Escuchar mensajes del proceso principal
+        if (window.electronAPI) {
+            // Actualizar estado
+            window.electronAPI.onUpdateStatus((event, message) => {
+                stopStatusUpdates();
+                updateStatus(message, 'info');
+            });
+            
+            // Mostrar error
+            window.electronAPI.onShowError((event, message) => {
+                stopStatusUpdates();
+                showError(message);
+            });
+            
+            // Estado de éxito
+            window.electronAPI.onStatusSuccess((event, message) => {
+                stopStatusUpdates();
+                showSuccess(message);
+            });
+        }
+
+        // Función para cerrar splash (llamada desde el proceso principal)
+        function closeSplash() {
+            try {
+                // Intentar cerrar usando la API de Electron
+                if (window.electronAPI && window.electronAPI.closeSplash) {
+                    window.electronAPI.closeSplash();
+                }
+                
+                // Fallback: cerrar la ventana directamente
+                setTimeout(() => {
+                    try {
+                        window.close();
+                    } catch (e) {
+                        console.log('No se pudo cerrar la ventana:', e);
+                    }
+                }, 100);
+                
+            } catch (e) {
+                console.log('Error cerrando splash:', e);
+            }
+        }
+
+        // Verificar periódicamente si el splash debe cerrarse
+        function checkSplashStatus() {
+            if (window.electronAPI && window.electronAPI.isSplashOpen) {
+                window.electronAPI.isSplashOpen().then((isOpen) => {
+                    if (!isOpen) {
+                        // El splash ya fue cerrado por el proceso principal
+                        console.log('Splash cerrado por el proceso principal');
+                    }
+                }).catch((error) => {
+                    console.log('Error verificando estado del splash:', error);
+                });
+            }
+        }
+
+        // Verificar cada 2 segundos si el splash debe cerrarse
+        setInterval(checkSplashStatus, 2000);
+
+        // Iniciar actualizaciones automáticas
+        startStatusUpdates();
+
+        // Exponer funciones globalmente
+        window.closeSplash = closeSplash;
+        window.retryStartup = retryStartup;
+        window.closeApplication = closeApplication;
+
+        // Log para debugging
+        console.log('🎯 Splash screen cargado y listo');
+    </script>
+</body>
+</html>
