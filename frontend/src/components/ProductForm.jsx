@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { Scale, ShoppingBag, CreditCard, Search, X, Save, RotateCcw, Trash2 } from 'lucide-react';
 import { useAutoSave } from '../hooks/useAutoSave';
-import ProviderForm from '../components/formClientesProveedores/ProviderForm';
+import api from '../config/axiosConfig';
 
 // Constantes para los tipos de unidad
  
@@ -90,6 +90,7 @@ const ProductForm = ({ onSubmit, initialData, categories, providers, onClose }) 
   const [isProvidedBySupplier, setIsProvidedBySupplier] = useState(
     Boolean(initialData?.provider) || false
   );
+  const [showProviderModal, setShowProviderModal] = useState(false);
   
   // Estado para controlar si se aplica automáticamente el porcentaje de ganancia
   const [autoApplyProfit, setAutoApplyProfit] = useState(true);
@@ -110,6 +111,43 @@ const ProductForm = ({ onSubmit, initialData, categories, providers, onClose }) 
   const { hasSavedData, getSavedData, clearSave } = useAutoSave('productForm', autosaveData);
 
   const [showRestoreBanner, setShowRestoreBanner] = useState(false);
+  const [additionalProviders, setAdditionalProviders] = useState([]);
+  const [supplierCreating, setSupplierCreating] = useState(false);
+  const [newSupplierForm, setNewSupplierForm] = useState({
+    name: '', businessName: '', ruc: '', email: '', phone: '', address: '', contactPerson: ''
+  });
+  const [newSupplierErrors, setNewSupplierErrors] = useState({});
+
+  const handleNewSupplierChange = (e) => {
+    setNewSupplierForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    if (newSupplierErrors[e.target.name]) {
+      setNewSupplierErrors(prev => ({ ...prev, [e.target.name]: '' }));
+    }
+  };
+
+  const handleCreateSupplier = async () => {
+    const errs = {};
+    if (!newSupplierForm.name.trim()) errs.name = 'El nombre es obligatorio';
+    setNewSupplierErrors(errs);
+    if (Object.keys(errs).length) return;
+
+    setSupplierCreating(true);
+    try {
+      const payload = {};
+      Object.entries(newSupplierForm).forEach(([k, v]) => { if (v.trim()) payload[k] = v.trim(); });
+      const res = await api.post('/suppliers', payload);
+      const created = res.data.data;
+      setShowProviderModal(false);
+      setNewSupplierForm({ name: '', businessName: '', ruc: '', email: '', phone: '', address: '', contactPerson: '' });
+      const providerWithId = { ...created, _id: created._id || created.id };
+      setAdditionalProviders(prev => [...prev, providerWithId]);
+      setFormData(prev => ({ ...prev, provider: providerWithId._id }));
+    } catch (err) {
+      setNewSupplierErrors({ submit: err.response?.data?.message || 'Error al crear proveedor' });
+    } finally {
+      setSupplierCreating(false);
+    }
+  };
 
   useEffect(() => {
     if (hasSavedData && !initialData) {
@@ -552,6 +590,7 @@ const ProductForm = ({ onSubmit, initialData, categories, providers, onClose }) 
           dueDate.setDate(dueDate.getDate() + 60);
         }
         
+        submitData.creditPurchase.isCredit = true;
         submitData.creditPurchase.dueDate = dueDate;
         submitData.creditPurchase.isPaid = false;
       }
@@ -1660,7 +1699,7 @@ const ProductForm = ({ onSubmit, initialData, categories, providers, onClose }) 
                 className={`w-full p-4 text-lg border-2 rounded-lg ${errors.provider ? 'border-red-500 focus:border-red-600' : 'border-teal-300 focus:border-teal-500'} focus:ring focus:ring-teal-200 focus:ring-opacity-50 appearance-none pl-4 pr-10`}
               >
                 <option value="">Seleccionar proveedor</option>
-                {providers?.map(provider => (
+                {[...(providers || []), ...additionalProviders].map(provider => (
                   <option key={provider._id} value={provider._id}>
                     {provider.name}
                   </option>
@@ -1674,6 +1713,81 @@ const ProductForm = ({ onSubmit, initialData, categories, providers, onClose }) 
             </div>
             {errors.provider && <span className="text-red-500 text-sm block">{errors.provider}</span>}
             
+            <button
+              type="button"
+              onClick={() => setShowProviderModal(true)}
+              className="w-full py-2 px-4 text-sm font-medium text-teal-700 bg-teal-50 border-2 border-teal-200 border-dashed rounded-lg hover:bg-teal-100 hover:border-teal-400 transition-colors flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Crear nuevo proveedor
+            </button>
+
+            {showProviderModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] p-4" onClick={() => setShowProviderModal(false)}>
+                <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                  <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl z-10">
+                    <h3 className="text-lg font-bold text-gray-800">Nuevo Proveedor</h3>
+                    <button onClick={() => setShowProviderModal(false)} className="text-gray-400 hover:text-gray-600">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    {newSupplierErrors.submit && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{newSupplierErrors.submit}</div>
+                    )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+                      <input type="text" name="name" value={newSupplierForm.name} onChange={handleNewSupplierChange}
+                        className={`w-full p-3 border-2 rounded-lg text-base ${newSupplierErrors.name ? 'border-red-500' : 'border-gray-300'} focus:border-teal-500 focus:ring focus:ring-teal-200`} placeholder="Nombre del proveedor" />
+                      {newSupplierErrors.name && <span className="text-red-500 text-xs mt-1 block">{newSupplierErrors.name}</span>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">RUC/Cédula</label>
+                        <input type="text" name="ruc" value={newSupplierForm.ruc} onChange={handleNewSupplierChange}
+                          className="w-full p-3 border-2 border-gray-300 rounded-lg text-base focus:border-teal-500 focus:ring focus:ring-teal-200" placeholder="RUC" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Razón Social</label>
+                        <input type="text" name="businessName" value={newSupplierForm.businessName} onChange={handleNewSupplierChange}
+                          className="w-full p-3 border-2 border-gray-300 rounded-lg text-base focus:border-teal-500 focus:ring focus:ring-teal-200" placeholder="Razón social" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" name="email" value={newSupplierForm.email} onChange={handleNewSupplierChange}
+                          className="w-full p-3 border-2 border-gray-300 rounded-lg text-base focus:border-teal-500 focus:ring focus:ring-teal-200" placeholder="correo@ejemplo.com" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                        <input type="text" name="phone" value={newSupplierForm.phone} onChange={handleNewSupplierChange}
+                          className="w-full p-3 border-2 border-gray-300 rounded-lg text-base focus:border-teal-500 focus:ring focus:ring-teal-200" placeholder="Teléfono" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                      <input type="text" name="address" value={newSupplierForm.address} onChange={handleNewSupplierChange}
+                        className="w-full p-3 border-2 border-gray-300 rounded-lg text-base focus:border-teal-500 focus:ring focus:ring-teal-200" placeholder="Dirección" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Persona de Contacto</label>
+                      <input type="text" name="contactPerson" value={newSupplierForm.contactPerson} onChange={handleNewSupplierChange}
+                        className="w-full p-3 border-2 border-gray-300 rounded-lg text-base focus:border-teal-500 focus:ring focus:ring-teal-200" placeholder="Nombre del contacto" />
+                    </div>
+                    <button onClick={handleCreateSupplier} disabled={supplierCreating}
+                      className="w-full py-3 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                      {supplierCreating ? 'Creando...' : 'Crear Proveedor'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center gap-3 p-3 bg-teal-50 rounded-lg">
               <input
                 type="checkbox"

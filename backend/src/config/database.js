@@ -330,6 +330,18 @@ function createTables(db) {
       total_expenses REAL DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS supplier_transactions (
+      id TEXT PRIMARY KEY,
+      supplier_id TEXT NOT NULL,
+      type TEXT NOT NULL CHECK(type IN ('payment','debt')),
+      amount REAL NOT NULL,
+      date TEXT,
+      notes TEXT,
+      credit_purchase_id TEXT,
+      created_by TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `);
 }
 
@@ -359,6 +371,10 @@ function migrateDb(db) {
     `ALTER TABLE cash_register_shifts ADD COLUMN declared_amount REAL DEFAULT 0`,
     `ALTER TABLE cash_register_shifts ADD COLUMN closing_notes TEXT`,
     `ALTER TABLE cash_register_shifts ADD COLUMN difference REAL DEFAULT 0`,
+    `ALTER TABLE suppliers ADD COLUMN updated_at TEXT`,
+    // credit_purchases — columna supplier_id para compatibilidad
+    `ALTER TABLE credit_purchases ADD COLUMN supplier_id TEXT`,
+    `ALTER TABLE credit_purchases ADD COLUMN product_id TEXT`,
   ];
   for (const stmt of alterStatements) {
     try { db.exec(stmt); } catch (_) { /* columna ya existe */ }

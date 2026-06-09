@@ -254,8 +254,16 @@ async function createWindow() {
       event.preventDefault();
       // Hard refresh (Ctrl+Shift+R) — bloquear completamente en producción
       if (input.shift) return;
-      // Navegar siempre a la raíz para que React Router rehidrate correctamente
-      mainWindow.loadURL(`http://localhost:${apiPort}`).catch(() => {});
+      // Obtener la ruta actual y pasarla como query param para restaurarla
+      try {
+        const currentUrl = mainWindow.webContents.getURL();
+        const urlObj = new URL(currentUrl);
+        const path = urlObj.pathname + urlObj.search + urlObj.hash;
+        const redirectParam = path !== '/' && path !== '' ? `?redirect=${encodeURIComponent(path)}` : '';
+        mainWindow.loadURL(`http://localhost:${apiPort}${redirectParam}`).catch(() => {});
+      } catch {
+        mainWindow.loadURL(`http://localhost:${apiPort}`).catch(() => {});
+      }
       return;
     }
     // F12 → solicitar al renderer que verifique el rol antes de abrir DevTools

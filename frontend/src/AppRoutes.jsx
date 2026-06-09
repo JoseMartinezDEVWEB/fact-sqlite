@@ -1,5 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense, Component } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense, Component, useEffect } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
 import { useLicense } from './context/LicenseContext.jsx';
 import Loader from './components/Loader.jsx';
@@ -94,6 +94,41 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Guarda y restaura la ruta actual al recargar (F5 / Ctrl+R)
+const RouteRestorer = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Guardar ruta en sessionStorage en cada navegación
+  useEffect(() => {
+    const path = location.pathname + location.search + location.hash;
+    if (path !== '/') {
+      sessionStorage.setItem('lastRoute', path);
+    }
+  }, [location]);
+
+  // Restaurar ruta al cargar la app
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const redirectParam = params.get('redirect');
+
+    if (redirectParam) {
+      const target = decodeURIComponent(redirectParam);
+      window.history.replaceState({}, '', '/');
+      navigate(target, { replace: true });
+      return;
+    }
+
+    const lastRoute = sessionStorage.getItem('lastRoute');
+    if (lastRoute && location.pathname === '/') {
+      sessionStorage.removeItem('lastRoute');
+      navigate(lastRoute, { replace: true });
+    }
+  }, []);
+
+  return null;
+};
+
 const AppRoutes = () => {
   // Con la nueva AuthContext, loading empieza en false porque el estado
   // se inicializa síncrono desde localStorage — no hay pantalla en blanco al recargar.
@@ -105,6 +140,7 @@ const AppRoutes = () => {
 
   return (
     <Router>
+      <RouteRestorer />
       <Loader />
       <ErrorBoundary>
         {loading ? (

@@ -1,5 +1,6 @@
 import { Supplier } from '../models/Supplier.js';
 import { getDb } from '../config/database.js';
+import { randomUUID } from 'crypto';
 
 export const getSuppliers = async (req, res) => {
   try {
@@ -76,9 +77,49 @@ export const getSupplierStats = async (req, res) => {
 };
 
 export const getSupplierTransactions = async (req, res) => {
-  res.json({ data: [] });
+  try {
+    const db = getDb();
+    const rows = db.prepare(
+      'SELECT * FROM supplier_transactions WHERE supplier_id = ? ORDER BY created_at DESC'
+    ).all(req.params.id);
+    const mapped = rows.map(r => Supplier._toDoc(r));
+    res.json({ data: mapped });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 export const createSupplierTransaction = async (req, res) => {
-  res.status(201).json({ message: 'Transacción registrada', data: req.body });
+  try {
+    const { type, amount, notes, date } = req.body;
+    if (!type || !['payment', 'debt'].includes(type)) {
+      return res.status(400).json({ message: 'Tipo de transacción inválido. Use "payment" o "debt"' });
+    }
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: 'El monto debe ser mayor a 0' });
+    }
+    const db = getDb();
+    const id = randomUUID();
+    const now = new Date().toISOString();
+
+    db.prepare(`
+      INSERT INTO supplier_transactions (id, supplier_id, type, amount, date, notes, created_by, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, req.params.id, type, amount, date || now, notes || null, req.user?._id || null, now);
+
+    // Actualizar deuda del proveedor
+    if (type === 'payment') {
+      db.prepare(`UPDATE suppliers SET current_debt = MAX(COALESCE(current_debt, 0) - ?, 0), updated_at = ? WHERE id = ?`)
+        .run(amount, now, req.params.id);
+    } else {
+      db.prepare(`UPDATE suppliers SET current_debt = COALESCE(current_debt, 0) + ?, updated_at = ? WHERE id = ?`)
+        .run(amount, now, req.params.id);
+    }
+
+    const row = db.prepare('SELECT * FROM supplier_transactions WHERE id = ?').get(id);
+    const doc = Supplier._toDoc(row);
+    res.status(201).json({ message: 'Transacción registrada', data: doc });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };

@@ -21,7 +21,46 @@ class ProductModel extends BaseModel {
     };
     // Calcular alertActive
     if (doc.quantity <= doc.minStock) doc.alertActive = true;
+
+    // ─── Virtuals / helpers ──────────────────────────────────────────
+    doc.stockUnitLabel = this._stockUnitLabel(doc);
+    doc.sellByWeight = doc.unitType === UNIT_TYPES.WEIGHT;
+    doc.isCreditPurchase = Boolean(doc.creditPurchase?.isCredit);
+    doc.daysUntilPayment = this._daysUntilPayment(doc);
+    doc.calculatePrice = (qty) => this._calculatePrice(doc, qty);
+    doc.getFormattedQuantity = () => this._formattedQuantity(doc);
+    doc.markAsPaid = async () => {
+      const db = getDb();
+      db.prepare(`UPDATE ${this.tableName} SET credit_is_paid = 1, credit_payment_date = datetime('now') WHERE id = ?`).run(doc.id);
+      doc.creditPurchase.isPaid = true;
+      doc.creditPurchase.paymentDate = new Date().toISOString();
+    };
+    // ─────────────────────────────────────────────────────────────────
+
     return doc;
+  }
+
+  _stockUnitLabel(doc) {
+    if (doc.unitType === UNIT_TYPES.WEIGHT) return doc.weightUnit || 'lb';
+    if (doc.unitType === UNIT_TYPES.PACKAGE) return doc.packageContentType === 'peso' ? (doc.weightUnit || 'lb') : 'unidad(es)';
+    return 'unidad(es)';
+  }
+
+  _daysUntilPayment(doc) {
+    if (!doc.creditPurchase?.dueDate || !doc.creditPurchase?.isCredit) return null;
+    const diff = new Date(doc.creditPurchase.dueDate) - new Date();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }
+
+  _calculatePrice(doc, qty) {
+    if (doc.unitType === UNIT_TYPES.WEIGHT) return (doc.salePrice || 0) * (parseFloat(qty) || 0);
+    return (doc.pricePerUnit || doc.salePrice || 0) * (parseFloat(qty) || 0);
+  }
+
+  _formattedQuantity(doc) {
+    const qty = parseFloat(doc.quantity) || 0;
+    const label = this._stockUnitLabel(doc);
+    return `${qty} ${label}`;
   }
 
   _toRow(data) {

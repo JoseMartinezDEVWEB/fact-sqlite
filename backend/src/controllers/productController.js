@@ -51,6 +51,47 @@ export const createProduct = async (req, res) => {
       else if (productData[f] === 'false') productData[f] = false;
     });
 
+    // ─── Validar proveedor si se especificó ──────────────────────────
+    const supplierId = productData.provider || productData.providerId || null;
+    if (supplierId) {
+      const _db = getDb();
+      const inClientes = _db.prepare('SELECT id, role FROM clientes WHERE id = ?').get(supplierId);
+      const inSuppliers = _db.prepare('SELECT id FROM suppliers WHERE id = ?').get(supplierId);
+      if (!inClientes && !inSuppliers) {
+        return res.status(400).json({ status: 'error', message: 'El proveedor especificado no existe' });
+      }
+    }
+
+    // ─── Validar categoría si se especificó ──────────────────────────
+    const categoryId = productData.category || productData.categoryId || null;
+    if (categoryId) {
+      const _db = getDb();
+      const cat = _db.prepare('SELECT id FROM categories WHERE id = ?').get(categoryId);
+      if (!cat) {
+        return res.status(400).json({ status: 'error', message: 'La categoría especificada no existe' });
+      }
+    }
+
+    // ─── Validaciones específicas por tipo de unidad ──────────────────
+    if (productData.unitType === 'peso') {
+      if (!productData.weightUnit) {
+        return res.status(400).json({ status: 'error', message: 'La unidad de peso es requerida para productos por peso' });
+      }
+    }
+    if (productData.unitType === 'paquete') {
+      const unitsQty = productData.packageContentType === 'peso'
+        ? parseFloat(productData.packageWeight) || 0
+        : parseFloat(productData.unitsPerPackage) || 0;
+      if (unitsQty <= 0) {
+        return res.status(400).json({ status: 'error', message: 'La cantidad de unidades/peso por paquete debe ser mayor a 0' });
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────
+
+    // ─── Resolver categoryId y providerId consistentes ───────────────
+    if (productData.category && !productData.categoryId) productData.categoryId = productData.category;
+    if (productData.provider && !productData.providerId) productData.providerId = productData.provider;
+
     const product = await Product.create(productData);
     const packageId = product.id || product._id;
 
@@ -67,6 +108,10 @@ export const createProduct = async (req, res) => {
         ? parseFloat((parseFloat(productData.salePrice) / unitsQty).toFixed(2))
         : parseFloat(productData.salePrice);
 
+      const unitPurchasePrice = unitsQty > 0
+        ? parseFloat((parseFloat(productData.purchasePrice) / unitsQty).toFixed(2))
+        : parseFloat(productData.purchasePrice);
+
       // Nombre de la unidad derivada
       const weightUnit = productData.weightUnit || 'lb';
       const unitName = isContentWeight
@@ -76,14 +121,16 @@ export const createProduct = async (req, res) => {
       const unitBarcode = productData.unitBarcode ||
         (productData.barcode ? `${productData.barcode.substring(0, 6)}U` : null);
 
+      const totalStockQty = (parseFloat(productData.quantity) || 0) * unitsQty;
+
       const unitData = {
         name: unitName,
         barcode: unitBarcode || null,
         unitType: isContentWeight ? 'peso' : 'unidad',
         ...(isContentWeight ? { weightUnit, minWeight: 0.01 } : {}),
-        quantity: unitsQty,
+        quantity: totalStockQty,
         minStock: parseFloat(productData.minStock) || 10,
-        purchasePrice: parseFloat(productData.purchasePrice) || 0,
+        purchasePrice: unitPurchasePrice,
         salePrice: unitSalePrice,
         pricePerUnit: unitSalePrice,
         categoryId: productData.category || productData.categoryId || null,
@@ -92,7 +139,7 @@ export const createProduct = async (req, res) => {
         isUnitOfPackage: true,
         parentPackageId: packageId,
         createdBy: productData.createdBy,
-        alertActive: unitsQty <= (parseFloat(productData.minStock) || 10),
+        alertActive: totalStockQty <= (parseFloat(productData.minStock) || 10),
       };
 
       unitProduct = await Product.create(unitData);
@@ -100,16 +147,62 @@ export const createProduct = async (req, res) => {
 
       // Enlazar el paquete con su unidad
       if (unitId) {
-        const db = getDb();
-        db.prepare(`UPDATE products SET unit_product_id = ? WHERE id = ?`).run(unitId, packageId);
+        const _db = getDb();
+        _db.prepare(`UPDATE products SET unit_product_id = ? WHERE id = ?`).run(unitId, packageId);
         product.unitProductId = unitId;
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────
+
+    // ─── Crear producto derivado por peso si tiene weightUnitBarcode ──
+    let weightUnitProduct = null;
+    if (productData.unitType === 'peso' && productData.weightUnitBarcode && parseFloat(productData.packageWeight) > 0 && packageId) {
+      const pw = parseFloat(productData.packageWeight);
+      const totalStock = (parseFloat(productData.quantity) || 0) * pw;
+
+      const weightSalePrice = parseFloat(productData.pricePerUnit) ||
+        (parseFloat(productData.salePrice) > 0
+          ? parseFloat((parseFloat(productData.salePrice) / pw).toFixed(2))
+          : 0);
+
+      const weightPurchasePrice = parseFloat(productData.purchasePrice) > 0
+        ? parseFloat((parseFloat(productData.purchasePrice) / pw).toFixed(2))
+        : 0;
+
+      const weightUnitData = {
+        name: `${productData.name} (por ${productData.weightUnit || 'lb'})`,
+        barcode: productData.weightUnitBarcode,
+        unitType: 'peso',
+        quantity: totalStock,
+        minStock: parseFloat(productData.minStock) || 10,
+        purchasePrice: weightPurchasePrice,
+        salePrice: weightSalePrice,
+        pricePerUnit: weightSalePrice,
+        weightUnit: productData.weightUnit || 'lb',
+        minWeight: parseFloat(productData.minWeight) || 0.01,
+        categoryId: productData.category || productData.categoryId || null,
+        providerId: productData.provider || productData.providerId || null,
+        description: productData.description || null,
+        isUnitOfPackage: true,
+        parentPackageId: packageId,
+        createdBy: productData.createdBy,
+        alertActive: totalStock <= (parseFloat(productData.minStock) || 10),
+      };
+
+      weightUnitProduct = await Product.create(weightUnitData);
+      const wuId = weightUnitProduct.id || weightUnitProduct._id;
+
+      if (wuId) {
+        const _db = getDb();
+        // Enlazar bidireccionalmente
+        _db.prepare(`UPDATE products SET unit_product_id = ? WHERE id = ?`).run(wuId, packageId);
+        product.unitProductId = wuId;
       }
     }
     // ─────────────────────────────────────────────────────────────────
 
     // ─── Registrar compra a crédito y actualizar deuda del proveedor ───
     const cp = productData.creditPurchase;
-    const supplierId = productData.provider || productData.providerId || null;
     if (cp && cp.isCredit && supplierId) {
       const db = getDb();
       const total = (productData.purchasePrice || 0) * (productData.quantity || 1);
@@ -135,10 +228,25 @@ export const createProduct = async (req, res) => {
       db.prepare(`
         UPDATE suppliers SET current_debt = COALESCE(current_debt, 0) + ?, updated_at = ? WHERE id = ?
       `).run(total, now, supplierId);
+      // Registrar transacción en el historial del proveedor
+      const cpId = randomUUID();
+      db.prepare(`
+        INSERT INTO supplier_transactions (id, supplier_id, type, amount, date, notes, credit_purchase_id, created_by, created_at)
+        VALUES (?, ?, 'debt', ?, ?, ?, ?, ?, ?)
+      `).run(
+        cpId,
+        supplierId,
+        total,
+        now,
+        `Compra a crédito: ${productData.name} (${productData.quantity} x $${productData.purchasePrice})`,
+        packageId,
+        productData.createdBy || null,
+        now
+      );
     }
     // ──────────────────────────────────────────────────────────────────
 
-    res.status(201).json({ status: 'success', data: { product, unitProduct } });
+    res.status(201).json({ status: 'success', data: { product, unitProduct, weightUnitProduct } });
   } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
   }
@@ -217,17 +325,43 @@ export const updateProduct = async (req, res) => {
       else if (updateData[f] === 'false') updateData[f] = false;
     });
 
+    // Leer el producto actual antes de modificar
+    const currentQ = await Product.findById(req.params.id);
+    const current = await currentQ;
+    if (!current) return res.status(404).json({ status: 'error', message: 'Producto no encontrado' });
+
     if (updateData.quantity !== undefined) {
       const qty = parseFloat(updateData.quantity);
-      const productQ = await Product.findById(req.params.id);
-      const product = await productQ;
-      const minStock = product ? parseFloat(product.minStock) || 10 : 10;
+      const minStock = parseFloat(current.minStock) || 10;
       updateData.alertActive = qty <= minStock;
+
+      // ─── Sincronizar cantidad con el producto derivado (hijo) ───────
+      if (current.unitProductId) {
+        const isWeightParent = current.unitType === 'peso';
+        const isPackageParent = current.unitType === 'paquete';
+        let childQty = 0;
+
+        if (isPackageParent) {
+          const unitsQty = current.packageContentType === 'peso'
+            ? parseFloat(current.packageWeight) || 0
+            : parseFloat(current.unitsPerPackage) || 1;
+          childQty = qty * unitsQty;
+        } else if (isWeightParent) {
+          const pw = parseFloat(current.packageWeight) || 0;
+          childQty = pw > 0 ? qty * pw : qty;
+        }
+
+        if (childQty > 0) {
+          const db = getDb();
+          db.prepare(`UPDATE products SET quantity = ?, alert_active = ? WHERE id = ?`)
+            .run(childQty, childQty <= (parseFloat(current.minStock) || 10), current.unitProductId);
+        }
+      }
+      // ────────────────────────────────────────────────────────────────
     }
 
     const product = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
     const updated = await product;
-    if (!updated) return res.status(404).json({ status: 'error', message: 'Producto no encontrado' });
 
     res.json({ status: 'success', data: { product: updated } });
   } catch (error) {
@@ -266,7 +400,32 @@ export const updateStock = async (req, res) => {
     if (!product) return res.status(404).json({ status: 'error', message: 'Producto no encontrado' });
 
     const newQty = parseFloat(quantity);
-    const alertActive = newQty <= (product.minStock || 10);
+    const minStockVal = parseFloat(product.minStock) || 10;
+    const alertActive = newQty <= minStockVal;
+
+    // Sincronizar con el hijo si existe
+    if (product.unitProductId) {
+      const isWeight = product.unitType === 'peso';
+      const isPackage = product.unitType === 'paquete';
+      let childQty = 0;
+
+      if (isPackage) {
+        const uq = product.packageContentType === 'peso'
+          ? parseFloat(product.packageWeight) || 0
+          : parseFloat(product.unitsPerPackage) || 1;
+        childQty = newQty * uq;
+      } else if (isWeight) {
+        const pw = parseFloat(product.packageWeight) || 0;
+        childQty = pw > 0 ? newQty * pw : newQty;
+      }
+
+      if (childQty > 0) {
+        const db = getDb();
+        db.prepare(`UPDATE products SET quantity = ?, alert_active = ? WHERE id = ?`)
+          .run(childQty, childQty <= minStockVal, product.unitProductId);
+      }
+    }
+
     const updated = await Product.findByIdAndUpdate(req.params.id, { quantity: newQty, alertActive }, { new: true });
     const u = await updated;
     res.json({ status: 'success', data: { product: u } });
